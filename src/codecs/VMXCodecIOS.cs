@@ -185,5 +185,15 @@ namespace libomtnet.codecs
             return VMXUnmanagedIOS.VMX_GetQuality(instance);
         }
 
+        public void VMX_SetEncodingParameters(IntPtr instance, int frameMin, int frameMax, int minQuality, int dcShift)
+        {
+            VMXUnmanagedIOS.VMX_SetEncodingParameters(instance, frameMin, frameMax, minQuality, dcShift);
+        }
+
+        public void VMX_GetEncodingParameters(IntPtr instance, out int frameMin, out int frameMax, out int minQuality, out int dcShift)
+        {
+            VMXUnmanagedIOS.VMX_GetEncodingParameters(instance, out frameMin, out frameMax, out minQuality, out dcShift);
+        }
+
     }
 }

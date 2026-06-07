@@ -66,5 +66,7 @@ namespace libomtnet.codecs
         int VMX_DecodePreviewUYVA(IntPtr Instance, byte[] dst, int stride);
         int VMX_GetEncodedPreviewLength(IntPtr Instance);
         float VMX_CalculatePSNR(byte[] image1, byte[] image2, int stride, int bytesPerPixel, OMTSize sz);
+        void VMX_SetEncodingParameters(IntPtr instance, int frameMin, int frameMax, int minQuality, int dcShift);
+        void VMX_GetEncodingParameters(IntPtr instance, out int frameMin, out int frameMax, out int minQuality, out int dcShift);
     }
 }

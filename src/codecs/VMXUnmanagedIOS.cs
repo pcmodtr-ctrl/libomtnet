@@ -95,5 +95,9 @@ namespace libomtnet.codecs
         internal static extern int VMX_GetEncodedPreviewLength(IntPtr Instance);
         [DllImport(DLLPATH)]
         internal static extern float VMX_CalculatePSNR(byte[] image1, byte[] image2, int stride, int bytesPerPixel, OMTSize sz);
+        [DllImport(DLLPATH)]
+        internal static extern void VMX_SetEncodingParameters(IntPtr instance, int frameMin, int frameMax, int minQuality, int dcShift);
+        [DllImport(DLLPATH)]
+        internal static extern void VMX_GetEncodingParameters(IntPtr instance, out int frameMin, out int frameMax, out int minQuality, out int dcShift);
     }
 }

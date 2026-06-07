@@ -265,6 +265,16 @@ namespace libomtnet.codecs
             return codec.VMX_GetEncodedPreviewLength(instance);
         }
 
+        public void SetEncodingParameters(int frameMin, int frameMax, int minQuality, int dcShift)
+        {
+            codec.VMX_SetEncodingParameters(instance, frameMin, frameMax, minQuality, dcShift);
+        }
+
+        public void GetEncodingParameters(out int frameMin, out int frameMax, out int minQuality, out int dcShift)
+        {
+            codec.VMX_GetEncodingParameters(instance, out frameMin, out frameMax, out minQuality, out dcShift);
+        }
+
         protected override void DisposeInternal()
         {
             if (instance != IntPtr.Zero)
