@@ -43,6 +43,8 @@ namespace libomtnet
     /// NetworkPortStart[integer] specify the first port to create Send instances on.Defaults to 6400
     /// 
     /// NetworkPortEnd[integer] specify the last port to create Send instances on.Defaults to 6600
+    /// EnhancedQualityEnabled[integer] enable PCModTR Enhanced Quality mode. 0 = disabled, 1 = enabled.
+    /// EnhancedQualityMode[string] select the PCModTR Enhanced Quality profile. Safe or Max.
     /// 
     /// </summary>
     public class OMTSettings
@@ -149,6 +151,38 @@ namespace libomtnet
         public void SetInteger(string key, int value)
         {
             SetString(key, value.ToString());
+        }
+
+        public bool GetBoolean(string key, bool defaultValue)
+        {
+            string value = GetString(key, null);
+            if (!string.IsNullOrEmpty(value))
+            {
+                if (value == "1" || value.Equals("true", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+                if (value == "0" || value.Equals("false", StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
+                }
+            }
+            return defaultValue;
+        }
+
+        public void SetBoolean(string key, bool value)
+        {
+            SetString(key, value ? "1" : "0");
+        }
+
+        public string GetEnhancedQualityMode(string defaultValue)
+        {
+            return GetString("EnhancedQualityMode", defaultValue) ?? defaultValue;
+        }
+
+        public void SetEnhancedQualityMode(string mode)
+        {
+            SetString("EnhancedQualityMode", mode);
         }
     }
 }

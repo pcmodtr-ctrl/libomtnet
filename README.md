@@ -38,3 +38,28 @@ The full name of all sources on the network can be found by using the OMTDiscove
 2. In a loop, poll OMTReceive.Receive specifying the types of frames to receive and also a timeout
 3. Process said frames as required
 
+## PCModTR OMT Enhanced Edition (OMT-EE)
+
+`PCModTR OMT Enhanced Edition (OMT-EE)` adds an OBS-compatible, safe high-quality encoder profile for libomtnet without changing existing public API behavior.
+
+- What it does: enables a higher-quality VMX encoding profile by applying a stronger `frameMax`, `minQuality`, and `quality` setting after encoder creation.
+- How to enable: use `OMTSettings` with `EnhancedQualityEnabled=1` and `EnhancedQualityMode=Safe` or `EnhancedQualityMode=Max`.
+- Safe vs Max:
+  - `Safe`: `quality=96`, `minQuality=92`, `frameMax=8 MB`
+  - `Max`: `quality=99`, `minQuality=96`, `frameMax=12 MB`
+- Why not target 8–9 Gbps: this release is tuned for stable OBS compatibility and improved moving-scene quality, not raw line-fill throughput.
+- Benchmark interpretation: `encodedBytes` grows with quality, showing higher bitrate use as quality increases. Use `VMXBench` output to compare `OMT stock`, `Enhanced Safe`, and `Enhanced Max` across `UYVY game_like`, `P216 game_like`, and `high_freq_noise` patterns.
+
+### Download
+
+A built artifact is available in this workspace as:
+
+- `libomtnet-release.zip`
+- contains `libomtnet.dll`
+
+Direct local file path:
+
+`file:///workspaces/libomtnet/libomtnet-release.zip`
+
+If your environment does not support direct file URIs, download the archive using VS Code file explorer or copy it from the workspace path above.
+

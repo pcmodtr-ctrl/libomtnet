@@ -34,93 +34,72 @@ namespace VMXBench
 
             try
             {
-                // Test different frame patterns
-                Dictionary<string, Func<byte[]>> framePatterns = new Dictionary<string, Func<byte[]>>
+// Targeted benchmark cases for OMT stock and PCModTR Enhanced Quality
+            Dictionary<string, Func<byte[]>> framePatterns = new Dictionary<string, Func<byte[]>>
+            {
+                { "game_like", GenerateGameLikeFrame },
+                { "high_freq_noise", GenerateHighFrequencyNoise }
+            };
+
+            var scenarios = new[]
+            {
+                new BenchmarkScenario("OMT stock", false, "Safe"),
+                new BenchmarkScenario("Enhanced Safe", true, "Safe"),
+                new BenchmarkScenario("Enhanced Max", true, "Max")
+            };
+
+            var formats = new[]
+            {
+                Tuple.Create("UYVY", VMXImageType.UYVY),
+                Tuple.Create("P216", VMXImageType.P216)
+            };
+
+            int testCount = 0;
+            int successCount = 0;
+
+            foreach (KeyValuePair<string, Func<byte[]>> pattern in framePatterns)
+            {
+                string patternName = pattern.Key;
+                Func<byte[]> frameGenerator = pattern.Value;
+
+                Log(string.Format("\n--- Testing frame pattern: {0} ---", patternName));
+                Console.WriteLine(string.Format("\nTesting frame pattern: {0}", patternName));
+
+                byte[] testFrame = frameGenerator();
+
+                foreach (var scenario in scenarios)
                 {
-                    { "flat_gradient", GenerateFlatGradient },
-                    { "checkerboard", GenerateCheckerboard },
-                    { "high_freq_noise", GenerateHighFrequencyNoise },
-                    { "game_like", GenerateGameLikeFrame }
-                };
-
-                // Quality levels
-                int[] qualities = { -1, 90, 96, 99 }; // -1 means default (OMT_HQ)
-
-                // FrameMax values in bytes
-                int[] frameMins = { -1 }; // -1 means default
-                int[] frameMaxes = { -1, 4 * 1024 * 1024, 8 * 1024 * 1024, 12 * 1024 * 1024, 16 * 1024 * 1024 };
-
-                // MinQuality values
-                int[] minQualities = { -1, 90, 94, 96, 99 }; // -1 means default
-
-                // Test scenarios: format, imageType, profile
-                Tuple<string, VMXImageType, VMXProfile>[] scenarios = new[]
-                {
-                    Tuple.Create("UYVY", VMXImageType.UYVY, VMXProfile.OMT_HQ),
-                    Tuple.Create("P216", VMXImageType.P216, VMXProfile.OMT_HQ),
-                };
-
-                int testCount = 0;
-                int successCount = 0;
-
-                foreach (KeyValuePair<string, Func<byte[]>> pattern in framePatterns)
-                {
-                    string patternName = pattern.Key;
-                    Func<byte[]> frameGenerator = pattern.Value;
-
-                    Log(string.Format("\n--- Testing frame pattern: {0} ---", patternName));
-                    Console.WriteLine(string.Format("\nTesting frame pattern: {0}", patternName));
-
-                    byte[] testFrame = frameGenerator();
-
-                    foreach (Tuple<string, VMXImageType, VMXProfile> scenario in scenarios)
+                    foreach (var format in formats)
                     {
-                        string format = scenario.Item1;
-                        VMXImageType imageType = scenario.Item2;
-                        VMXProfile profile = scenario.Item3;
-
-                        foreach (int quality in qualities)
+                        testCount++;
+                        try
                         {
-                            foreach (int frameMax in frameMaxes)
+                            BenchmarkResult result = RunEncodingTest(testFrame, patternName, format.Item1, format.Item2, scenario);
+                            if (result.Success)
                             {
-                                foreach (int minQuality in minQualities)
-                                {
-                                    testCount++;
-                                    try
-                                    {
-                                        BenchmarkResult result = RunEncodingTest(testFrame, format, imageType, profile, quality, frameMax, minQuality);
-                                        if (result.Success)
-                                        {
-                                            successCount++;
-                                        }
-                                        results.Add(result);
+                                successCount++;
+                            }
+                            results.Add(result);
 
-                                        if (testCount % 20 == 0)
-                                        {
-                                            Console.WriteLine(string.Format("  Completed {0} tests ({1} successful)...", testCount, successCount));
-                                        }
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        Log(string.Format("ERROR in test {0}: {1}", testCount, ex.Message));
-                                        results.Add(new BenchmarkResult
-                                        {
-                                            Success = false,
-                                            Width = WIDTH,
-                                            Height = HEIGHT,
-                                            Format = format,
-                                            Quality = quality == -1 ? "default" : quality.ToString(),
-                                            FrameMin = "N/A",
-                                            FrameMax = frameMax == -1 ? "default" : string.Format("{0}MB", frameMax / (1024 * 1024)),
-                                            MinQuality = minQuality == -1 ? "default" : minQuality.ToString(),
-                                            DcShift = "N/A",
-                                            EncodedBytes = 0,
-                                            EstimatedMbpsAt60fps = 0,
-                                            EncodeMilliseconds = 0,
-                                            Error = ex.Message
-                                        });
-                                    }
-                                }
+                            Console.WriteLine(string.Format("  Completed {0} tests ({1} successful)...", testCount, successCount));
+                        }
+                        catch (Exception ex)
+                        {
+                            Log(string.Format("ERROR in test {0}: {1}", testCount, ex.Message));
+                            results.Add(new BenchmarkResult
+                            {
+                                ProfileName = scenario.ProfileName,
+                                Pattern = patternName,
+                                Format = format.Item1,
+                                Quality = "error",
+                                FrameMax = "0",
+                                MinQuality = "0",
+                                EncodedBytes = 0,
+                                EstimatedMbpsAt60fps = 0,
+                                EncodeMilliseconds = 0,
+                                Success = false,
+                                Error = ex.Message
+                            });
                             }
                         }
                     }
@@ -276,84 +255,71 @@ namespace VMXBench
             return frame;
         }
 
-        static BenchmarkResult RunEncodingTest(byte[] testFrame, string format, VMXImageType imageType, 
-            VMXProfile profile, int qualityParam, int frameMaxParam, int minQualityParam)
+        static BenchmarkResult RunEncodingTest(byte[] testFrame, string patternName, string format, VMXImageType imageType, BenchmarkScenario scenario)
         {
             BenchmarkResult result = new BenchmarkResult
             {
-                Width = WIDTH,
-                Height = HEIGHT,
+                ProfileName = scenario.ProfileName,
+                Pattern = patternName,
                 Format = format,
-                Quality = qualityParam == -1 ? "default" : qualityParam.ToString(),
-                FrameMax = frameMaxParam == -1 ? "default" : string.Format("{0}MB", frameMaxParam / (1024 * 1024)),
-                MinQuality = minQualityParam == -1 ? "default" : minQualityParam.ToString(),
                 Success = false
             };
 
-            OMTVMX1Codec encoder = null;
             byte[] encodedBuffer = new byte[20 * 1024 * 1024]; // 20MB buffer
 
             try
             {
-                // Create encoder
-                encoder = new OMTVMX1Codec(WIDTH, HEIGHT, TARGET_FPS, profile, VMXColorSpace.BT709);
+                OMTSettings settings = OMTSettings.GetInstance();
+                settings.SetBoolean("EnhancedQualityEnabled", scenario.Enabled);
+                settings.SetEnhancedQualityMode(scenario.Mode);
 
-                // Set quality
-                if (qualityParam != -1)
-                {
-                    encoder.SetQuality(qualityParam);
-                }
-
-                // Get default encoding parameters
-                int frameMin, frameMax, minQuality, dcShift;
-                encoder.GetEncodingParameters(out frameMin, out frameMax, out minQuality, out dcShift);
-
-                result.DcShift = dcShift.ToString();
-                result.FrameMin = frameMin.ToString();
-
-                // Set encoding parameters
-                int effectiveFrameMax = frameMaxParam == -1 ? frameMax : frameMaxParam;
-                int effectiveMinQuality = minQualityParam == -1 ? minQuality : minQualityParam;
-
-                encoder.SetEncodingParameters(frameMin, effectiveFrameMax, effectiveMinQuality, dcShift);
-
-                // Encode frame
-                GCHandle frameHandle = GCHandle.Alloc(testFrame, GCHandleType.Pinned);
+                OMTVMX1Codec encoder = null;
                 try
                 {
-                    Stopwatch sw = Stopwatch.StartNew();
-                    
-                    int encodedLen = encoder.Encode(imageType, frameHandle.AddrOfPinnedObject(), WIDTH * 2, encodedBuffer, false);
-                    sw.Stop();
+                    encoder = new OMTVMX1Codec(WIDTH, HEIGHT, TARGET_FPS, VMXProfile.OMT_HQ, VMXColorSpace.BT709);
 
-                    if (encodedLen <= 0 || encodedLen > encodedBuffer.Length)
+                    int frameMin, frameMax, minQuality, dcShift;
+                    encoder.GetEncodingParameters(out frameMin, out frameMax, out minQuality, out dcShift);
+                    result.Quality = encoder.GetQuality().ToString();
+                    result.FrameMax = frameMax.ToString();
+                    result.MinQuality = minQuality.ToString();
+
+                    GCHandle frameHandle = GCHandle.Alloc(testFrame, GCHandleType.Pinned);
+                    try
                     {
-                        result.Error = string.Format("Invalid encoded length: {0}", encodedLen);
-                        return result;
-                    }
+                        Stopwatch sw = Stopwatch.StartNew();
+                        int encodedLen = encoder.Encode(imageType, frameHandle.AddrOfPinnedObject(), WIDTH * 2, encodedBuffer, false);
+                        sw.Stop();
 
-                    result.EncodedBytes = encodedLen;
-                    result.EncodeMilliseconds = (int)sw.ElapsedMilliseconds;
-                    result.EstimatedMbpsAt60fps = (double)encodedLen * 8 * 60 / (1024 * 1024 * 1024);
-                    result.Success = true;
+                        if (encodedLen <= 0 || encodedLen > encodedBuffer.Length)
+                        {
+                            result.Error = string.Format("Invalid encoded length: {0}", encodedLen);
+                            return result;
+                        }
+
+                        result.EncodedBytes = encodedLen;
+                        result.EncodeMilliseconds = (int)sw.ElapsedMilliseconds;
+                        result.EstimatedMbpsAt60fps = (double)encodedLen * 8 * 60 / (1024.0 * 1024.0 * 1024.0);
+                        result.Success = true;
+                    }
+                    finally
+                    {
+                        frameHandle.Free();
+                    }
                 }
                 finally
                 {
-                    frameHandle.Free();
+                    if (encoder != null)
+                    {
+                        encoder.Dispose();
+                    }
                 }
             }
             catch (Exception ex)
             {
-                result.Error = ex.Message;
+                result.Error = ex.ToString();
+                Console.WriteLine("RunEncodingTest failed: " + ex.ToString());
             }
-            finally
-            {
-                if (encoder != null)
-                {
-                    encoder.Dispose();
-                }
-            }
-
             return result;
         }
 
@@ -424,13 +390,13 @@ namespace VMXBench
             string csvPath = Path.Combine(resultDir, "vmxbench_results.csv");
             using (StreamWriter writer = new StreamWriter(csvPath, false, Encoding.UTF8))
             {
-                writer.WriteLine("width,height,format,quality,frameMin,frameMax,minQuality,dcShift,encodedBytes,estimatedMbpsAt60fps,encodeMilliseconds,success,error");
+                writer.WriteLine("profileName,format,pattern,quality,frameMax,minQuality,encodedBytes,estimatedMbpsAt60fps,encodeMilliseconds");
                 foreach (BenchmarkResult result in results)
                 {
-                    writer.WriteLine(string.Format("{0},{1},{2},{3},{4},{5},{6},{7},{8},{9:F4},{10},{11},{12}",
-                        result.Width, result.Height, result.Format, result.Quality, result.FrameMin, result.FrameMax,
-                        result.MinQuality, result.DcShift, result.EncodedBytes, result.EstimatedMbpsAt60fps,
-                        result.EncodeMilliseconds, result.Success, string.IsNullOrEmpty(result.Error) ? "OK" : result.Error));
+                    writer.WriteLine(string.Format("{0},{1},{2},{3},{4},{5},{6},{7:F4},{8}",
+                        result.ProfileName, result.Format, result.Pattern, result.Quality,
+                        result.FrameMax, result.MinQuality, result.EncodedBytes,
+                        result.EstimatedMbpsAt60fps, result.EncodeMilliseconds));
                 }
             }
             Console.WriteLine(string.Format("CSV saved to {0}", csvPath));
@@ -446,14 +412,12 @@ namespace VMXBench
 
     class BenchmarkResult
     {
-        public int Width { get; set; }
-        public int Height { get; set; }
+        public string ProfileName { get; set; }
+        public string Pattern { get; set; }
         public string Format { get; set; }
         public string Quality { get; set; }
-        public string FrameMin { get; set; }
         public string FrameMax { get; set; }
         public string MinQuality { get; set; }
-        public string DcShift { get; set; }
         public int EncodedBytes { get; set; }
         public double EstimatedMbpsAt60fps { get; set; }
         public int EncodeMilliseconds { get; set; }
@@ -462,13 +426,27 @@ namespace VMXBench
 
         public BenchmarkResult()
         {
+            ProfileName = "";
+            Pattern = "";
             Format = "";
             Quality = "";
-            FrameMin = "";
             FrameMax = "";
             MinQuality = "";
-            DcShift = "";
             Error = "";
+        }
+    }
+
+    class BenchmarkScenario
+    {
+        public string ProfileName { get; }
+        public bool Enabled { get; }
+        public string Mode { get; }
+
+        public BenchmarkScenario(string profileName, bool enabled, string mode)
+        {
+            ProfileName = profileName;
+            Enabled = enabled;
+            Mode = mode;
         }
     }
 }

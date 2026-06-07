@@ -29,6 +29,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Security;
 using System.Text;
+using libomtnet;
 
 namespace libomtnet.codecs
 {
@@ -106,10 +107,78 @@ namespace libomtnet.codecs
             this.instance = codec.VMX_Create(new OMTSize(width, height), profile, colorSpace);
             if (framesPerSecond > 60)
             {
-               int threads = codec.VMX_GetThreads(this.instance);
-               threads *= 2;
+                int threads = codec.VMX_GetThreads(this.instance);
+                threads *= 2;
                 codec.VMX_SetThreads(this.instance, threads);
-               Debug.WriteLine("Codec.SetThreads: " + threads);
+                Debug.WriteLine("Codec.SetThreads: " + threads);
+            }
+            ApplyEnhancedQualityProfile();
+        }
+
+        private enum EnhancedQualityProfileMode
+        {
+            Safe,
+            Max
+        }
+
+        private void ApplyEnhancedQualityProfile()
+        {
+            try
+            {
+                OMTSettings settings = OMTSettings.GetInstance();
+                bool enabled = settings.GetBoolean("EnhancedQualityEnabled", false);
+                string modeString = settings.GetEnhancedQualityMode("Safe");
+                EnhancedQualityProfileMode mode = EnhancedQualityProfileMode.Safe;
+                if (modeString != null && modeString.Equals("Max", StringComparison.OrdinalIgnoreCase))
+                {
+                    mode = EnhancedQualityProfileMode.Max;
+                }
+
+                if (!enabled)
+                {
+                    OMTLogging.Write("EnhancedQuality disabled", "OMTVMX1Codec");
+                    return;
+                }
+
+                int frameMin, frameMax, minQuality, dcShift;
+                codec.VMX_GetEncodingParameters(this.instance, out frameMin, out frameMax, out minQuality, out dcShift);
+                int oldFrameMin = frameMin;
+                int oldFrameMax = frameMax;
+                int oldMinQuality = minQuality;
+                int oldDcShift = dcShift;
+
+                int newFrameMax = frameMax;
+                int newMinQuality = minQuality;
+                int newQuality = GetQuality();
+
+                if (mode == EnhancedQualityProfileMode.Max)
+                {
+                    newFrameMax = 12 * 1024 * 1024;
+                    newMinQuality = 96;
+                    newQuality = 99;
+                }
+                else
+                {
+                    newFrameMax = 8 * 1024 * 1024;
+                    newMinQuality = 92;
+                    newQuality = 96;
+                }
+
+                codec.VMX_SetEncodingParameters(this.instance, frameMin, newFrameMax, newMinQuality, dcShift);
+                codec.VMX_SetQuality(this.instance, newQuality);
+
+                int verifiedFrameMin, verifiedFrameMax, verifiedMinQuality, verifiedDcShift;
+                codec.VMX_GetEncodingParameters(this.instance, out verifiedFrameMin, out verifiedFrameMax, out verifiedMinQuality, out verifiedDcShift);
+                int verifiedQuality = codec.VMX_GetQuality(this.instance);
+
+                OMTLogging.Write(string.Format("EnhancedQuality enabled, mode={0}, old frameMin={1}, old frameMax={2}, old minQuality={3}, old dcShift={4}, new frameMin={5}, new frameMax={6}, new minQuality={7}, new dcShift={8}, quality={9}, reportedQuality={10}",
+                    mode, oldFrameMin, oldFrameMax, oldMinQuality, oldDcShift,
+                    verifiedFrameMin, verifiedFrameMax, verifiedMinQuality, verifiedDcShift,
+                    newQuality, verifiedQuality), "OMTVMX1Codec");
+            }
+            catch (Exception ex)
+            {
+                OMTLogging.Write("EnhancedQuality setup failed: " + ex.Message, "OMTVMX1Codec");
             }
         }
 
