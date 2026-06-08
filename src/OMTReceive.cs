@@ -611,6 +611,7 @@ namespace libomtnet
             {
                 if (v != null)
                 {
+                    // Prioritize return of old frame early - faster pool recycling
                     if (lastVideoFrame != null)
                     {
                         v.ReturnFrame(lastVideoFrame);
@@ -627,6 +628,7 @@ namespace libomtnet
             {
                 if (a != null)
                 {
+                    // Prioritize return of old frame early - faster pool recycling
                     if (lastAudioFrame != null)
                     {
                         a.ReturnFrame(lastAudioFrame);
@@ -680,7 +682,7 @@ namespace libomtnet
             OMTFrameBase frame = ReceiveInternal(frameTypes);
             if (frame == null)
             {
-                for (int i = 0; i < 4; i ++)
+                for (int i = 0; i < 2; i++)  // Reduced from 4 to 2 - reduce irregular polling cycles
                 {
                     int result = WaitHandle.WaitTimeout;
                     if (frameTypes == (OMTFrameType.Video | OMTFrameType.Audio | OMTFrameType.Metadata))

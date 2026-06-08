@@ -51,12 +51,12 @@ namespace libomtnet
         public static int NETWORK_ASYNC_COUNT_META_ONLY = 64;
         public static int NETWORK_ASYNC_BUFFER_META_ONLY = 1024;
 
-        public static int VIDEO_FRAME_POOL_COUNT = 16;            // 16 frames (was 4)
+        public static int VIDEO_FRAME_POOL_COUNT = 24;            // 24 frames (was 16) - increased for timing variance tolerance
 
         public static int VIDEO_MIN_SIZE = 65536;
         public static int VIDEO_MAX_SIZE = 10485760;
 
-        public static int AUDIO_FRAME_POOL_COUNT = 10;
+        public static int AUDIO_FRAME_POOL_COUNT = 14;             // 14 frames (was 10) - increased for timing variance tolerance
 
         public static int AUDIO_MIN_SIZE = 65536;
         public static int AUDIO_MAX_SIZE = 1048576;
