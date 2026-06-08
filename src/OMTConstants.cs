@@ -35,15 +35,15 @@ namespace libomtnet
     }
     internal class OMTConstants
     {
-        public static int NETWORK_SEND_BUFFER = 65536;
-        public static int NETWORK_SEND_RECEIVE_BUFFER = 65536;
-        public static int NETWORK_RECEIVE_BUFFER = 1048576 * 8; //8MB is a safe maximum for MacOS platforms
+        // === SAFE 10G TUNING ===
+        public static int NETWORK_SEND_BUFFER = 512 * 1024;       // 512 KB (was 64 KB)
+        public static int NETWORK_SEND_RECEIVE_BUFFER = 65536;    // 64 KB metadata buffer
+        public static int NETWORK_RECEIVE_BUFFER = 1048576 * 8;   // 8MB is a safe maximum for MacOS platforms
 
-        //On Windows setting a high receive size per async leads to random stalls on certain NICs > 1gbps
-        //128KB as a transfer limit is intended to workaround this issue.
-        public static int NETWORK_RECEIVE_MAX_TRANSFER = 128 * 1024;
+        // 1 MB transfer per async - safe for testing before going more aggressive
+        public static int NETWORK_RECEIVE_MAX_TRANSFER = 1024 * 1024;
 
-        public static int NETWORK_ASYNC_COUNT = 4;
+        public static int NETWORK_ASYNC_COUNT = 16;               // 16 concurrent (was 4)
         public static int NETWORK_ASYNC_BUFFER_AV = 1048576;
         public static int NETWORK_ASYNC_BUFFER_META = 65536;
 
@@ -51,7 +51,7 @@ namespace libomtnet
         public static int NETWORK_ASYNC_COUNT_META_ONLY = 64;
         public static int NETWORK_ASYNC_BUFFER_META_ONLY = 1024;
 
-        public static int VIDEO_FRAME_POOL_COUNT = 4;
+        public static int VIDEO_FRAME_POOL_COUNT = 16;            // 16 frames (was 4)
 
         public static int VIDEO_MIN_SIZE = 65536;
         public static int VIDEO_MAX_SIZE = 10485760;
